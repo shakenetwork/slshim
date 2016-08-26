@@ -1,0 +1,99 @@
+LIBRARY slc.dll
+EXPORTS
+SLGetLicense = unsupp4
+SLGetLicenseFileId = unsupp4
+SLGetLicenseInformation = unsupp6
+SLpBeginGenuineTicketTransaction = ok4
+SLpClearActivationInProgress = ok2
+SLpDepositDownlevelGenuineTicket = ok4
+SLpDepositTokenActivationResponse = ok6
+SLpGenerateTokenActivationChallenge = ok4
+SLpAuthenticateGenuineTicketResponse = ok8
+SLpGetGenuineBlob = ok5
+SLpGetLicenseAcquisitionInfo = ok7
+SLpGetMSPidInformation = unsupp10
+SLpGetMachineUGUID = ok2
+SLpGetTokenActivationGrantInfo = ok6
+SLpVLActivateProduct = ok2
+SLDepositMigrationBlob = ok1
+SLDepositStoreToken = ok3
+SLGatherMigrationBlob = ok3
+SLGatherMigrationBlobEx = ok3
+SLCallServer = ok5
+SLConsumeWindowsRight = ok1
+SLDepositOfflineConfirmationId = ok4
+SLDepositOfflineConfirmationIdEx = ok5
+SLFireEvent = ok3
+SLReArmWindows = ok0
+SLRegisterEvent = ok4
+SLRegisterPlugin = ok2
+SLUnregisterPlugin = ok2
+SLRegisterWindowsEvent = ok2
+SLSetCurrentProductKey = ok3
+SLSetGenuineInformation = ok5
+SLUninstallLicense = ok2
+SLUninstallProofOfPurchase = ok1
+SLUnregisterEvent = ok4
+SLUnregisterWindowsEvent = ok2
+SLInstallPackage = ok6
+SLInitialize = ok0
+SLSignTokenActivationChallenge = unsupp9
+SLUninstallPackage = ok5
+SLpProcessOemProductKey = ok2
+SLpUpdateComponentTokens = ok2
+SLReArm = ok4
+SLPersistRTSPayloadOverride = ok5
+SLPersistApplicationPolicies = ok3
+SLGetTokenActivationGrants = unsupp3
+SLGetTokenActivationCertificates = unsupp3
+SLGetReferralInformation = unsupp5
+SLGetEncryptedPIDEx = unsupp4
+SLACtivateProduct =ok7
+SLDepositTokenActivationResponse = ok1
+SLFreeTokenActivationCertificates = ok1
+SLFreeTokenActivationGrants = ok1
+SLGenerateTokenActivationChallenge = unsupp1
+SLGetPackageProductKey = unsupp3
+SLGetPackageProperties = unsupp4
+SLGetPackageToken = unsupp4
+SLGetReferralInformation = unsupp5
+SLGetServerStatus = unsupp5
+SLActivateProduct = ok1
+SLGetApplicationPolicy = SLGetPolicyInformation
+SLGetActiveLicenseInfo = unsupp4
+SLGetProductSkuInformation = SLGetPKeyInformation
+SLInstallProofOfPurchaseEx = unsupp8
+SLInstallProofOfPurchase = unsupp6
+SLInstallLicense
+SLGenerateOfflineInstallationId = unsupp3
+SLGenerateOfflineInstallationIdEx = unsupp4
+SLAcquireGenuineTicket = unsupp5
+SLSetAuthenticationData
+SLpCheckProductKey = fill2
+SLpGetGenuineLocal = fill3
+SLGetPolicyInformation
+SLGetPolicyInformationDWORD
+SLGetSLIDList
+SLGetServiceInformation = SLGetPolicyInformation
+SLGetWindowsInformation
+SLGetWindowsInformationDWORD
+SLIsWindowsGenuineLocal = fill1
+SLIsGenuineLocal
+SLIsGenuineLocalEx = fill3
+SLGetApplicationInformation
+SLGetGenuineInformation
+SLGetInstalledProductKeyIds = unsupp4
+SLGetLicensingStatusInformation
+SLGetPKeyId = unsupp6
+SLOpen
+SLClose = ok1
+SLGetAuthenticationResult
+SLLoadApplicationPolicies = ok4
+SLUnloadApplicationPolicies = ok2
+SLConsumeRight
+SLGetPKeyInformation
+ServiceMain
+SLShimSvcInit
+DllGetClassObject = unsupp3
+DllCanUnloadNow = ok0
+SLAcquireGenuineTicketForAppId = ok1
