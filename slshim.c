@@ -518,7 +518,7 @@ HRESULT WINAPI SLGetSLIDList(
 	SLID     **ppReturnIds
 )
 {
-	*ppReturnIds = malloc(sizeof(SLID) * sizeof(nconsumed));
+	*ppReturnIds = malloc(sizeof(SLID) * nconsumed);
 	memcpy((void*)*ppReturnIds, (void*)consumed_skuids, sizeof(SLID));
 	*pnReturnIds = nconsumed;
 	return S_OK;
