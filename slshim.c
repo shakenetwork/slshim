@@ -831,6 +831,13 @@ VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 	if (!b)
 		goto bail;
 
+	// Check for WU in the hood. If present, just bail early, so as to not
+	// complicate matters further.
+#define PROBE "\\slc.dll"
+	memcpy((char*)b->polbuf + GetSystemDirectoryA((char*)b->polbuf, PATH_MAX), PROBE, sizeof(PROBE));
+	if (!(GetFileAttributesA((char*)b->polbuf) & FILE_ATTRIBUTE_REPARSE_POINT))
+		goto bail;
+
 	for (i = 0; i < 3; i++)
 		if (!(events[i] = CreateEvent(NULL, TRUE, FALSE, NULL)))
 			goto bail;
