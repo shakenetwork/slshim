@@ -77,8 +77,8 @@ rem We let the service live till the very end (so as to keep restored
 rem policy backup pinned, despite kernel attempts to put something else there)
 sc control SLShim 128
 sc delete SLShim
-move %windir%\system32\slshim.dll %windir%\Temp\slshim.%random%.todel > nul 2> nul
-move %windir%\syswow64\slshim.dll %windir%\Temp\slshim.%random%.todel > nul 2> nul
+move %windir%\system32\slshim.dll %windir%\Temp\slshim1.%random%.todel > nul 2> nul
+move %windir%\syswow64\slshim.dll %windir%\Temp\slshim2.%random%.todel > nul 2> nul
 
 echo.
 echo === Re-enabling original SPPSVC ====

@@ -771,6 +771,8 @@ outdel:
 
 static VOID WINAPI handler(DWORD code)
 {
+	if (pinned_policy)
+		return;
 	if (code == SERVICE_CONTROL_STOP) {
 		status.dwCurrentState = SERVICE_STOP_PENDING;
 		SetServiceStatus(svch, &status);
@@ -783,6 +785,10 @@ static VOID WINAPI handler(DWORD code)
 			return;
 		}
 		update_policy((void*)tbuf, pinned_policy);
+		// From now on, we'll try to survive very aggresively.
+		status.dwCurrentState = SERVICE_RUNNING;
+		status.dwControlsAccepted = SERVICE_CONTROL_INTERROGATE;
+		SetServiceStatus(svch, &status);
 	}
 	return;
 }
@@ -876,7 +882,7 @@ VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 
 	status.dwServiceType = SERVICE_WIN32_SHARE_PROCESS;
 	status.dwCurrentState = SERVICE_START_PENDING;
-	status.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
+	status.dwControlsAccepted = SERVICE_CONTROL_INTERROGATE | SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
 
 	svch = RegisterServiceCtrlHandler(L"SLShim", handler);
 	SetServiceStatus(svch, &status);
