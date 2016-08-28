@@ -716,6 +716,7 @@ HRESULT WINAPI SLSetAuthenticationData(
 	static int didsplice;
 	if (didsplice)
 		return S_OK;
+	didsplice = 1;
 	splice(CryptGetHashParam, my_CryptGetHashParam, (void*)&real_CryptGetHashParam);
 	return S_OK;
 }
