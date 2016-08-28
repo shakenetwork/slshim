@@ -73,6 +73,7 @@ exit
 echo.
 echo === Deleting SLShim service ====
 echo.
+sc control SLShim 128
 sc stop SLShim
 sc delete SLShim
 del %windir%\system32\slshim.dll > nul 2> nul

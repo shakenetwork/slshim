@@ -1,3 +1,4 @@
+#define _WIN32_WINNT _WIN32_WINNT_WIN7
 #define CryptGetHashParam CryptGetHashParam_dummy
 #include <windows.h>
 #include <stdint.h>
@@ -404,7 +405,7 @@ static int nconsumed;
 // And doing malloc in DllMain is ... tricky as the buffer is unused
 // more often than not - we get loaded multiple times. .bss is more likely
 // to stay out of working set than malloc.
-static DWORD tbuf[8192];
+static DWORD tbuf[16384];
 
 static HRESULT sl_get(const char *path, const WCHAR *name, SLDATATYPE *t, UINT *pcbValue, PBYTE *ppbValue)
 {
@@ -736,6 +737,39 @@ BOOL APIENTRY WINAPI dll_main(HINSTANCE hModule, DWORD code, LPVOID ress)
 static HANDLE events[3];
 static SERVICE_STATUS_HANDLE svch;
 static SERVICE_STATUS status;
+static HKEY keys[2];
+static int no_more_updates;
+
+static const WCHAR *temp_path(WCHAR *buf)
+{
+	static WCHAR tbuf[PATH_MAX];
+	if (!buf) buf = tbuf;
+	GUID guid;
+	CoCreateGuid(&guid);
+	StringFromGUID2(&guid, buf + GetTempPath(PATH_MAX, buf), 64);
+	return buf;
+}
+
+
+static void update_policy(const void *buf, int len)
+{
+	HKEY tk;
+	HRESULT ret;
+	if (!no_more_updates)
+		return;
+	const WCHAR *tp = temp_path(NULL);
+	if (RegSaveKey(keys[0], tp, NULL))
+		return;
+	if (RegLoadAppKey(tp, &tk, KEY_ALL_ACCESS, 0, 0))
+		goto outdel;
+	ret = RegSetValueEx(tk, L"ProductPolicy", 0, REG_BINARY, buf, len);
+	RegCloseKey(tk);
+	if (!ret)
+		RegRestoreKey(keys[0], tp, REG_FORCE_RESTORE);
+outdel:
+	DeleteFile(tp);
+}
+
 
 static VOID WINAPI handler(DWORD code)
 {
@@ -743,6 +777,13 @@ static VOID WINAPI handler(DWORD code)
 		status.dwCurrentState = SERVICE_STOP_PENDING;
 		SetServiceStatus(svch, &status);
 		SetEvent(events[2]);
+	} else if (code == 128) {
+		DWORD ot;
+		DWORD sz = sizeof(tbuf);
+		if (RegQueryValueEx(keys[0], L"ProductPolicy", 0, &ot, (void*)tbuf, &sz))
+			return;
+		update_policy((void*)tbuf, sz);
+		no_more_updates = 1;
 	}
 	return;
 }
@@ -795,17 +836,6 @@ static int pol_pack(UCHAR *dst, pol_ent **array, int n)
 	return h->sz;
 }
 
-static const WCHAR *temp_path(WCHAR *buf)
-{
-	static WCHAR tbuf[PATH_MAX];
-	if (!buf) buf = tbuf;
-	GUID guid;
-	CoCreateGuid(&guid);
-	StringFromGUID2(&guid, buf + GetTempPath(PATH_MAX, buf), 64);
-	return buf;
-}
-
-
 VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 {
 	__declspec(dllimport) NTSTATUS NTAPI RtlAdjustPrivilege(ULONG,BOOLEAN,BOOLEAN,PBOOLEAN);
@@ -822,7 +852,6 @@ VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 		WCHAR valn[PATH_MAX];
 		pol_ent *ents[POL_MAX];
 	} *b = NULL;
-	HKEY keys[2] = {0};
 	BOOLEAN old;
 
 	if (GetSystemMetrics(SM_CLEANBOOT))
@@ -939,15 +968,6 @@ skip:;
 		}
 
 		DWORD final = pol_pack(b->polbuf2, b->ents, nent);
-		if (RegSaveKey(keys[0], temp_path(b->valn), NULL))
-			goto next;
-		HKEY hk2;
-		const WCHAR *tp;
-		if (RegCreateKeyEx(HKEY_CURRENT_USER, L"SLShim", 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk2, NULL))
-			goto outdel;
-		if (RegRestoreKey(hk2, b->valn, REG_FORCE_RESTORE))
-			goto outdel2;
-
 		for (int i = 0; i < nent; i++) {
 			static WCHAR tpk[256];
 			UINT nl = b->ents[i]->name_sz/2;
@@ -959,16 +979,8 @@ skip:;
 			RegSetValueEx(keys[1], tpk, 0, b->ents[i]->type, b->ents[i]->name + b->ents[i]->name_sz, b->ents[i]->data_sz);
 		}
 
-		if (RegSetValueEx(hk2, L"ProductPolicy", 0, REG_BINARY, (void*)b->polbuf2, final))
-			goto outdel;
-		if (RegSaveKey(hk2, (tp = temp_path(NULL)), NULL))
-			goto outdel2;
-		RegRestoreKey(keys[0], tp, REG_FORCE_RESTORE); // Use IDA next time, Daz.
-		DeleteFile(tp);
-outdel2:
-		RegCloseKey(hk2);
-outdel:
-		DeleteFile(b->valn);
+		update_policy(b->polbuf2, final);
+
 next:;
 		RegNotifyChangeKeyValue(keys[evt], FALSE,
 			REG_NOTIFY_CHANGE_LAST_SET|REG_NOTIFY_CHANGE_NAME, events[evt], TRUE);
@@ -985,11 +997,11 @@ bail:;
 	if (svch) SetServiceStatus(svch, &status);
 }
 
-void CALLBACK WINAPI SLShimSvcInit()
+void CALLBACK WINAPI SLShimInit(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 {
 	HKEY k;
-	BYTE vb[1024];
-	DWORD ot, sz = sizeof(vb);
+	BYTE *vb = (void*)tbuf;
+	DWORD ot, sz = sizeof(tbuf);
 	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &k))
 		return;
 #define SLSHIM L"SLShim"
@@ -1001,8 +1013,14 @@ void CALLBACK WINAPI SLShimSvcInit()
 	memcpy((void*)tp, (void*)SLSHIM, sizeof(SLSHIM));
 	RegSetValueEx(k, L"DcomLaunch", 0, ot, vb, sz + sizeof(SLSHIM) - 2);
 	RegCloseKey(k);
+	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\ProductOptions", 0, KEY_ALL_ACCESS, &k))
+		return;
+	sz = sizeof(tbuf);
+	if (RegQueryValueExW(k, L"ProductPolicy", 0, &ot, vb, &sz))
+		return;
+	RegSetValueEx(k, L"ProductPolicyBackup", 0, ot, vb, sz);
+	RegCloseKey(k);
 }
-
 
 HRESULT WINAPI fill1(DWORD *g)
 {

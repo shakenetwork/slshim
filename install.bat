@@ -104,7 +104,7 @@ sc create SLShim binPath= "%%SystemRoot%%\system32\svchost.exe -k DcomLaunch" st
 sc sidtype SLShim unrestricted
 sc start SLShim > nul 2> nul
 reg add HKLM\SYSTEM\CurrentControlSet\services\SLShim\Parameters /f /v ServiceDll /t REG_EXPAND_SZ /d %%SystemRoot%%\system32\slshim.dll
-rundll32 slshim%bits%.dll SLShimSvcInit
+rundll32 slshim%bits%.dll SLShimInit
 
 echo.
 echo === Disabling old SPPSVC services ===

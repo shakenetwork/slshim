@@ -93,7 +93,7 @@ SLUnloadApplicationPolicies = ok2
 SLConsumeRight
 SLGetPKeyInformation
 ServiceMain
-SLShimSvcInit
+SLShimInit
 DllGetClassObject = unsupp3
 DllCanUnloadNow = ok0
 SLAcquireGenuineTicketForAppId = ok1
