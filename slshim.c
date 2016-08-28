@@ -738,7 +738,7 @@ static HANDLE events[3];
 static SERVICE_STATUS_HANDLE svch;
 static SERVICE_STATUS status;
 static HKEY keys[2];
-static int no_more_updates;
+static DWORD pinned_policy;
 
 static const WCHAR *temp_path(WCHAR *buf)
 {
@@ -755,8 +755,6 @@ static void update_policy(const void *buf, int len)
 {
 	HKEY tk;
 	HRESULT ret;
-	if (!no_more_updates)
-		return;
 	const WCHAR *tp = temp_path(NULL);
 	if (RegSaveKey(keys[0], tp, NULL))
 		return;
@@ -779,11 +777,12 @@ static VOID WINAPI handler(DWORD code)
 		SetEvent(events[2]);
 	} else if (code == 128) {
 		DWORD ot;
-		DWORD sz = sizeof(tbuf);
-		if (RegQueryValueEx(keys[0], L"ProductPolicy", 0, &ot, (void*)tbuf, &sz))
+		pinned_policy = sizeof(tbuf);
+		if (RegQueryValueEx(keys[0], L"ProductPolicyBackup", 0, &ot, (void*)tbuf, &pinned_policy)) {
+			pinned_policy = 0;
 			return;
-		update_policy((void*)tbuf, sz);
-		no_more_updates = 1;
+		}
+		update_policy((void*)tbuf, pinned_policy);
 	}
 	return;
 }
@@ -899,6 +898,8 @@ VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 		BYTE *p = b->bigbuf;
 		DWORD ot;
 		DWORD sz = 65536;
+		if (pinned_policy)
+			goto next;
 		if (RegQueryValueEx(keys[0], L"ProductPolicy", 0, &ot, b->polbuf, &sz))
 			goto next;
 		memset(b->ents, 0, sizeof(b->ents[0]) * POL_MAX);
@@ -982,6 +983,8 @@ skip:;
 		update_policy(b->polbuf2, final);
 
 next:;
+		if (pinned_policy)
+			update_policy((void*)tbuf, pinned_policy);
 		RegNotifyChangeKeyValue(keys[evt], FALSE,
 			REG_NOTIFY_CHANGE_LAST_SET|REG_NOTIFY_CHANGE_NAME, events[evt], TRUE);
 		evt = WaitForMultipleObjects(3, events, FALSE, INFINITE);
