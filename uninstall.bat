@@ -52,6 +52,7 @@ set fullname=%dirname%\%fname%
 echo - Restoring original %fname%.dll
 move "%fullname%.dll" %windir%\Temp\%fname%.%random%.todel
 ren "%fullname%.slold" %fname%.dll
+icacls "%fullname%.dll" /setowner "NT SERVICE\TrustedInstaller"
 exit /b
 
 :checkfile
