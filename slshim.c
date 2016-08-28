@@ -738,7 +738,8 @@ static HANDLE events[3];
 static SERVICE_STATUS_HANDLE svch;
 static SERVICE_STATUS status;
 static HKEY keys[2];
-static DWORD pinned_policy;
+static DWORD pinned_policy = 0;
+static int immortal = 0;
 
 static const WCHAR *temp_path(WCHAR *buf)
 {
@@ -762,8 +763,16 @@ static void update_policy(const void *buf, int len)
 		goto outdel;
 	ret = RegSetValueEx(tk, L"ProductPolicy", 0, REG_BINARY, buf, len);
 	RegCloseKey(tk);
-	if (!ret)
-		RegRestoreKey(keys[0], tp, REG_FORCE_RESTORE);
+	if (!ret) {
+		int i;
+		// The RegCloseKey above is asynchronous, meaning we'll get
+		// sharing violations for a while.
+		for (i = 0; i < 10; i++) {
+			ret = RegRestoreKey(keys[0], tp, REG_FORCE_RESTORE);
+			if (ret != 32) break;
+			Sleep(100);
+		}
+	}
 outdel:
 	DeleteFile(tp);
 }
@@ -771,12 +780,17 @@ outdel:
 
 static VOID WINAPI handler(DWORD code)
 {
-	if (pinned_policy)
+	if (immortal)
 		return;
 	if (code == SERVICE_CONTROL_STOP) {
 		status.dwCurrentState = SERVICE_STOP_PENDING;
 		SetServiceStatus(svch, &status);
 		SetEvent(events[2]);
+	} else if (code == SERVICE_CONTROL_SHUTDOWN) {
+		status.dwCurrentState = SERVICE_RUNNING;
+		status.dwControlsAccepted = SERVICE_CONTROL_INTERROGATE;
+		SetServiceStatus(svch, &status);
+		immortal = 1;
 	} else if (code == 128) {
 		DWORD ot;
 		pinned_policy = sizeof(tbuf);
@@ -789,6 +803,7 @@ static VOID WINAPI handler(DWORD code)
 		status.dwCurrentState = SERVICE_RUNNING;
 		status.dwControlsAccepted = SERVICE_CONTROL_INTERROGATE;
 		SetServiceStatus(svch, &status);
+		immortal = 1;
 	}
 	return;
 }
@@ -975,6 +990,7 @@ skip:;
 		}
 
 		DWORD final = pol_pack(b->polbuf2, b->ents, nent);
+		update_policy(b->polbuf2, final);
 		for (int i = 0; i < nent; i++) {
 			static WCHAR tpk[256];
 			UINT nl = b->ents[i]->name_sz/2;
@@ -985,8 +1001,6 @@ skip:;
 			tpk[nl+1] = 0;
 			RegSetValueEx(keys[1], tpk, 0, b->ents[i]->type, b->ents[i]->name + b->ents[i]->name_sz, b->ents[i]->data_sz);
 		}
-
-		update_policy(b->polbuf2, final);
 
 next:;
 		if (pinned_policy)
@@ -1011,6 +1025,15 @@ void CALLBACK WINAPI SLShimInit(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, i
 	HKEY k;
 	BYTE *vb = (void*)tbuf;
 	DWORD ot, sz = sizeof(tbuf);
+
+	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\ProductOptions", 0, KEY_ALL_ACCESS, &k))
+		return;
+	if (RegQueryValueExW(k, L"ProductPolicy", 0, &ot, vb, &sz))
+		return;
+	RegSetValueEx(k, L"ProductPolicyBackup", 0, ot, vb, sz);
+	RegCloseKey(k);
+
+	sz = sizeof(tbuf);
 	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost", 0, KEY_ALL_ACCESS, &k))
 		return;
 #define SLSHIM L"SLShim"
@@ -1021,13 +1044,6 @@ void CALLBACK WINAPI SLShimInit(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, i
 		return;
 	memcpy((void*)tp, (void*)SLSHIM, sizeof(SLSHIM));
 	RegSetValueEx(k, L"DcomLaunch", 0, ot, vb, sz + sizeof(SLSHIM) - 2);
-	RegCloseKey(k);
-	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\ProductOptions", 0, KEY_ALL_ACCESS, &k))
-		return;
-	sz = sizeof(tbuf);
-	if (RegQueryValueExW(k, L"ProductPolicy", 0, &ot, vb, &sz))
-		return;
-	RegSetValueEx(k, L"ProductPolicyBackup", 0, ot, vb, sz);
 	RegCloseKey(k);
 }
 

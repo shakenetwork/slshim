@@ -69,6 +69,7 @@ goto initsvc
 echo Creating %sysdir%\slshim.dll ...
 move %sysdir%\slshim.dll %windir%\Temp\slshim.%random% > nul 2> nul
 copy slshim%bits%.dll %sysdir%\slshim.dll > nul
+icacls "%sysdir%\slshim.dll" /L /Grant "NT SERVICE\TrustedInstaller":F 2> nul > nul
 for %%d in (slc,slcext,sppc,sppcext,slwga) do (
 	set dirname=%sysdir%
 	set fname=%%d
@@ -92,6 +93,7 @@ if "%fname%" == "osppc" (
 ) else (
 	mklink "%fullname%.dll" slshim.dll
 )
+icacls "%fullname%.dll" /L /Grant "NT SERVICE\TrustedInstaller":F 2> nul > nul
 exit /b
 
 :initsvc
@@ -100,11 +102,10 @@ rem cache APIs (eg even notepad would cry otherwise)
 echo.
 echo === Creating kernel cache service ===
 echo.
-sc create SLShim binPath= "%%SystemRoot%%\system32\svchost.exe -k DcomLaunch" start= auto type= share group= Base
+sc create SLShim binPath= "%%SystemRoot%%\system32\svchost.exe -k DcomLaunch" start= auto type= share group= Base && rundll32 slshim%bits%.dll SLShimInit
 sc sidtype SLShim unrestricted
 sc start SLShim > nul 2> nul
 reg add HKLM\SYSTEM\CurrentControlSet\services\SLShim\Parameters /f /v ServiceDll /t REG_EXPAND_SZ /d %%SystemRoot%%\system32\slshim.dll
-rundll32 slshim%bits%.dll SLShimInit
 
 echo.
 echo === Disabling old SPPSVC services ===
@@ -117,6 +118,9 @@ reg import tokens.reg
 
 echo ========
 echo All done now. You'll have to reboot for changes to take effect.
+echo Changes to kernel policy will propagate on second reboot as the service
+echo is not fully active yet.
+echo.
 echo Note that if anything above looks fishy (ie errors), run uninstall.bat.
 echo If uninstall barks at you it can't find all backup files (partial install),
 echo run echo `sfc /scannow` to repair your system.
