@@ -74,8 +74,10 @@ echo === Deleting SLShim service ====
 echo.
 sc stop SLShim
 sc delete SLShim
-del %windir%\system32\slshim.dll > nul
-del %windir%\syswow64\slshim.dll > nul
+del %windir%\system32\slshim.dll > nul 2> nul
+move %windir%\system32\slshim.dll %windir%\Temp\slshim.%random%.todel > nul 2> nul
+del %windir%\syswow64\slshim.dll > nul 2> nul
+move %windir%\syswow64\slshim.dll %windir%\Temp\slshim.%random%.todel > nul 2> nul
 
 echo.
 echo === Re-enabling original SPPSVC ====
