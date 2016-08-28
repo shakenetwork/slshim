@@ -1049,7 +1049,7 @@ HRESULT WINAPI ok7(void *a1, void *a2, void *a3, void *a4, void *a5, void *a6, v
 {
 	return S_OK;
 }
-HRESULT WINAPI ok8(void *a1, void *a2, void *a3, void *a4, void *a5, void *a6, void *a7)
+HRESULT WINAPI ok8(void *a1, void *a2, void *a3, void *a4, void *a5, void *a6, void *a7,void*a8)
 {
 	return S_OK;
 }
