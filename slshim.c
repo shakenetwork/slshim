@@ -768,9 +768,9 @@ static void update_policy(const void *buf, int len)
 		// The RegCloseKey above is asynchronous, meaning we'll get
 		// sharing violations for a while.
 		for (i = 0; i < 10; i++) {
+			Sleep(100);
 			ret = RegRestoreKey(keys[0], tp, REG_FORCE_RESTORE);
 			if (ret != 32) break;
-			Sleep(100);
 		}
 	}
 outdel:
