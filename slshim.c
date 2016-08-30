@@ -928,7 +928,7 @@ VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 		if (nent < 0) goto next;
 
 		// Now iterate values and modify kernel entries
-		for (int i = 0; (valnsz = PATH_MAX) && !RegEnumValue(keys[1], i, b->valn, &valnsz, 0, &ot, b->valbuf, &sz); i++) {
+		for (int i = 0; (valnsz = PATH_MAX, sz = 65536) && !(RegEnumValue(keys[1], i, b->valn, &valnsz, 0, &ot, b->valbuf, &sz)); i++) {
 			int j;
 			int mirror = b->valn[valnsz-1] == L'_';
 			if (mirror)
