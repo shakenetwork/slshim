@@ -104,8 +104,8 @@ echo === Creating kernel cache service ===
 echo.
 sc create SLShim binPath= "%%SystemRoot%%\system32\svchost.exe -k DcomLaunch" start= auto type= share group= Base && rundll32 slshim%bits%.dll SLShimInit
 sc sidtype SLShim unrestricted
-sc start SLShim > nul 2> nul
 reg add HKLM\SYSTEM\CurrentControlSet\services\SLShim\Parameters /f /v ServiceDll /t REG_EXPAND_SZ /d %%SystemRoot%%\system32\slshim.dll
+sc start SLShim > nul 2> nul
 
 echo.
 echo === Disabling old SPPSVC services ===
